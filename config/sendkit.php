@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'api_key' => env('SENDKIT_API_KEY'),
-    'api_url' => env('SENDKIT_API_URL', 'https://api.sendkit.com'),
+    'api_url' => env('SENDKIT_API_URL', 'https://api.sendkit.dev'),
     'webhook' => [
         'secret' => env('SENDKIT_WEBHOOK_SECRET'),
         'path' => env('SENDKIT_WEBHOOK_PATH', 'webhook/sendkit'),

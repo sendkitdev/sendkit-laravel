@@ -25,7 +25,7 @@ class SendKitServiceProvider extends ServiceProvider
 
             return new Client(
                 apiKey: $apiKey,
-                baseUrl: config('sendkit.api_url', 'https://api.sendkit.com'),
+                baseUrl: config('sendkit.api_url', 'https://api.sendkit.dev'),
             );
         });
     }
