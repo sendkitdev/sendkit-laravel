@@ -16,6 +16,10 @@ class SendKitServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/sendkit.php', 'sendkit');
 
+        config()->set('mail.mailers.sendkit', [
+            'transport' => 'sendkit',
+        ]);
+
         $this->app->singleton(Client::class, function (): Client {
             $apiKey = config('sendkit.api_key');
 
