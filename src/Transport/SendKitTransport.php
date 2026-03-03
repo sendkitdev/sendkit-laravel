@@ -24,7 +24,7 @@ class SendKitTransport extends AbstractTransport
         $email = MessageConverter::toEmail($message->getOriginalMessage());
         $envelope = $message->getEnvelope();
 
-        $from = $envelope->getSender()->getAddress();
+        $from = $envelope->getSender()->toString();
         $to = implode(',', array_map(
             fn (Address $address): string => $address->getAddress(),
             $envelope->getRecipients(),

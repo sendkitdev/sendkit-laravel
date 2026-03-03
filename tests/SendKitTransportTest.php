@@ -64,6 +64,26 @@ it('sends an email via the transport', function () {
     expect($body['raw_message'])->toContain('Test Subject');
 });
 
+it('sends an email with sender display name', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com', 'Support Team'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello World</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['envelope_from'])->toBe('"Support Team" <sender@example.com>');
+});
+
 it('casts transport to string as sendkit', function () {
     $history = [];
     $client = createTestClient($history, []);
