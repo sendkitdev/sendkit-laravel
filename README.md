@@ -17,16 +17,6 @@ MAIL_MAILER=sendkit
 SENDKIT_API_KEY=your-api-key
 ```
 
-Add the mailer to `config/mail.php`:
-
-```php
-'mailers' => [
-    'sendkit' => [
-        'transport' => 'sendkit',
-    ],
-],
-```
-
 Optionally publish the config file:
 
 ```bash
