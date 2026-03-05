@@ -9,6 +9,8 @@ use SendKit\Client;
 
 /**
  * @method static \SendKit\Emails emails()
+ * @method static \SendKit\EmailValidations emailValidations()
+ * @method static array validateEmail(string $email)
  *
  * @see \SendKit\Client
  */
