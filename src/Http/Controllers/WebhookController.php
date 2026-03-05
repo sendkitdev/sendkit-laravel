@@ -41,6 +41,6 @@ class WebhookController extends Controller
             event(new $eventClass($data));
         }
 
-        return response()->json(['status' => 'ok']);
+        return response()->json([], 200);
     }
 }
