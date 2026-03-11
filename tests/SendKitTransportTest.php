@@ -57,11 +57,13 @@ it('sends an email via the transport', function () {
     expect($history)->toHaveCount(1);
 
     $request = $history[0]['request'];
-    expect($request->getUri()->getPath())->toBe('/v1/emails/mime');
+    expect($request->getUri()->getPath())->toBe('/emails');
 
     $body = json_decode($request->getBody()->getContents(), true);
-    expect($body['envelope_from'])->toBe('sender@example.com');
-    expect($body['raw_message'])->toContain('Test Subject');
+    expect($body['from'])->toBe('sender@example.com');
+    expect($body['to'])->toBe(['recipient@example.com']);
+    expect($body['subject'])->toBe('Test Subject');
+    expect($body['html'])->toBe('<p>Hello World</p>');
 });
 
 it('sends an email with sender display name', function () {
@@ -81,7 +83,115 @@ it('sends an email with sender display name', function () {
     $transport->send($email);
 
     $body = json_decode($history[0]['request']->getBody()->getContents(), true);
-    expect($body['envelope_from'])->toBe('"Support Team" <sender@example.com>');
+    expect($body['from'])->toBe('"Support Team" <sender@example.com>');
+});
+
+it('sends an email with cc and bcc', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->cc(new Address('cc@example.com'))
+        ->bcc(new Address('bcc@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['to'])->toBe(['recipient@example.com']);
+    expect($body['cc'])->toBe(['cc@example.com']);
+    expect($body['bcc'])->toBe(['bcc@example.com']);
+});
+
+it('sends an email with reply-to', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->replyTo(new Address('reply@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['reply_to'])->toBe(['reply@example.com']);
+});
+
+it('sends an email with text body', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->text('Plain text content');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['text'])->toBe('Plain text content');
+    expect($body)->not->toHaveKey('html');
+});
+
+it('omits optional fields when not set', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body)->not->toHaveKey('cc');
+    expect($body)->not->toHaveKey('bcc');
+    expect($body)->not->toHaveKey('reply_to');
+    expect($body)->not->toHaveKey('attachments');
+});
+
+it('adds X-SendKit-Email-Id header after sending', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'email-uuid-123'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $sentMessage = $transport->send($email);
+
+    expect($sentMessage->getOriginalMessage()->getHeaders()->get('X-SendKit-Email-Id')->getBody())->toBe('email-uuid-123');
 });
 
 it('casts transport to string as sendkit', function () {

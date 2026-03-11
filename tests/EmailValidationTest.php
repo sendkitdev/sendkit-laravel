@@ -62,7 +62,7 @@ it('validates an email via the facade', function () {
 
     $request = $history[0]['request'];
     expect($request->getMethod())->toBe('POST');
-    expect($request->getUri()->getPath())->toBe('/v1/emails/validate');
+    expect($request->getUri()->getPath())->toBe('/emails/validate');
 });
 
 it('validates an email via the facade emailValidations method', function () {

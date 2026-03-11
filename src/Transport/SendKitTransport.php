@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace SendKit\Laravel\Transport;
 
+use Exception;
 use SendKit\Client;
-use Symfony\Component\Mailer\Envelope;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\MessageConverter;
 
 class SendKitTransport extends AbstractTransport
@@ -24,18 +26,88 @@ class SendKitTransport extends AbstractTransport
         $email = MessageConverter::toEmail($message->getOriginalMessage());
         $envelope = $message->getEnvelope();
 
-        $from = $envelope->getSender()->toString();
-        $to = implode(',', array_map(
-            fn (Address $address): string => $address->getAddress(),
-            $envelope->getRecipients(),
-        ));
+        $headers = [];
+        $headersToBypass = ['from', 'to', 'cc', 'bcc', 'reply-to', 'sender', 'subject', 'content-type'];
 
-        $response = $this->client->emails()->sendMime($from, $to, $message->toString());
+        foreach ($email->getHeaders()->all() as $name => $header) {
+            if (in_array($name, $headersToBypass, true)) {
+                continue;
+            }
 
-        $message->getOriginalMessage()->getHeaders()->addTextHeader(
-            'X-SendKit-Email-Id',
-            $response['id'],
-        );
+            $headers[$header->getName()] = $header->getBodyAsString();
+        }
+
+        $attachments = [];
+
+        foreach ($email->getAttachments() as $attachment) {
+            $attachmentHeaders = $attachment->getPreparedHeaders();
+            $contentType = $attachmentHeaders->get('Content-Type')->getBody();
+            $filename = $attachmentHeaders->getHeaderParameter('Content-Disposition', 'filename');
+
+            $attachments[] = [
+                'content_type' => $contentType,
+                'content' => str_replace("\r\n", '', $attachment->bodyToString()),
+                'filename' => $filename,
+            ];
+        }
+
+        $payload = [
+            'from' => $envelope->getSender()->toString(),
+            'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
+            'subject' => $email->getSubject(),
+        ];
+
+        if ($email->getHtmlBody()) {
+            $payload['html'] = $email->getHtmlBody();
+        }
+
+        if ($email->getTextBody()) {
+            $payload['text'] = $email->getTextBody();
+        }
+
+        if ($email->getCc()) {
+            $payload['cc'] = $this->stringifyAddresses($email->getCc());
+        }
+
+        if ($email->getBcc()) {
+            $payload['bcc'] = $this->stringifyAddresses($email->getBcc());
+        }
+
+        if ($email->getReplyTo()) {
+            $payload['reply_to'] = $this->stringifyAddresses($email->getReplyTo());
+        }
+
+        if ($headers !== []) {
+            $payload['headers'] = $headers;
+        }
+
+        if ($attachments !== []) {
+            $payload['attachments'] = $attachments;
+        }
+
+        try {
+            $response = $this->client->emails()->send($payload);
+        } catch (Exception $exception) {
+            throw new TransportException(
+                sprintf('Request to SendKit API failed. Reason: %s.', $exception->getMessage()),
+                is_int($exception->getCode()) ? $exception->getCode() : 0,
+                $exception
+            );
+        }
+
+        $email->getHeaders()->addTextHeader('X-SendKit-Email-Id', $response['id']);
+    }
+
+    /**
+     * Get the recipients without CC or BCC.
+     *
+     * @return Address[]
+     */
+    protected function getRecipients(Email $email, \Symfony\Component\Mailer\Envelope $envelope): array
+    {
+        return array_filter($envelope->getRecipients(), function (Address $address) use ($email) {
+            return in_array($address, array_merge($email->getCc(), $email->getBcc()), true) === false;
+        });
     }
 
     public function __toString(): string
