@@ -53,7 +53,7 @@ class SendKitTransport extends AbstractTransport
 
         $payload = [
             'from' => $envelope->getSender()->toString(),
-            'to' => $this->getRecipients($email, $envelope)[0]->toString(),
+            'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
             'subject' => $email->getSubject(),
         ];
 

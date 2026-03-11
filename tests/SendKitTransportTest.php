@@ -61,7 +61,7 @@ it('sends an email via the transport', function () {
 
     $body = json_decode($request->getBody()->getContents(), true);
     expect($body['from'])->toBe('sender@example.com');
-    expect($body['to'])->toBe('recipient@example.com');
+    expect($body['to'])->toBe(['recipient@example.com']);
     expect($body['subject'])->toBe('Test Subject');
     expect($body['html'])->toBe('<p>Hello World</p>');
 });
@@ -105,7 +105,7 @@ it('sends an email with cc and bcc', function () {
     $transport->send($email);
 
     $body = json_decode($history[0]['request']->getBody()->getContents(), true);
-    expect($body['to'])->toBe('recipient@example.com');
+    expect($body['to'])->toBe(['recipient@example.com']);
     expect($body['cc'])->toBe(['cc@example.com']);
     expect($body['bcc'])->toBe(['bcc@example.com']);
 });
