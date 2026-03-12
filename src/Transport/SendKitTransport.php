@@ -81,7 +81,7 @@ class SendKitTransport extends AbstractTransport
         }
 
         if ($email->getReplyTo()) {
-            $payload['reply_to'] = $this->stringifyAddresses($email->getReplyTo())[0];
+            $payload['reply_to'] = $this->stringifyAddresses($email->getReplyTo());
         }
 
         if ($headers !== []) {

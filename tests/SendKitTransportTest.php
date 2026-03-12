@@ -129,7 +129,7 @@ it('sends an email with reply-to', function () {
     $transport->send($email);
 
     $body = json_decode($history[0]['request']->getBody()->getContents(), true);
-    expect($body['reply_to'])->toBe('reply@example.com');
+    expect($body['reply_to'])->toBe(['reply@example.com']);
 });
 
 it('sends an email with text body', function () {
@@ -203,7 +203,7 @@ it('casts transport to string as sendkit', function () {
     expect((string) $transport)->toBe('sendkit');
 });
 
-it('sends reply_to as a string not an array', function () {
+it('sends reply_to as an array with multiple addresses', function () {
     $history = [];
     $client = createTestClient($history, [
         new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
@@ -221,8 +221,8 @@ it('sends reply_to as a string not an array', function () {
     $transport->send($email);
 
     $body = json_decode($history[0]['request']->getBody()->getContents(), true);
-    expect($body['reply_to'])->toBeString();
-    expect($body['reply_to'])->toBe('reply@example.com');
+    expect($body['reply_to'])->toBeArray();
+    expect($body['reply_to'])->toBe(['reply@example.com', 'reply2@example.com']);
 });
 
 it('sends an email with tags via MetadataHeader', function () {
@@ -378,3 +378,47 @@ it('throws a TransportException when the API returns an error', function () {
 
     $transport->send($email);
 })->throws(\Symfony\Component\Mailer\Exception\TransportException::class);
+
+it('sends an email with multiple cc addresses', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->cc(new Address('cc1@example.com'), new Address('cc2@example.com'), new Address('cc3@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['cc'])->toBeArray();
+    expect($body['cc'])->toBe(['cc1@example.com', 'cc2@example.com', 'cc3@example.com']);
+});
+
+it('sends an email with multiple bcc addresses', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->bcc(new Address('bcc1@example.com'), new Address('bcc2@example.com'), new Address('bcc3@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['bcc'])->toBeArray();
+    expect($body['bcc'])->toBe(['bcc1@example.com', 'bcc2@example.com', 'bcc3@example.com']);
+});
