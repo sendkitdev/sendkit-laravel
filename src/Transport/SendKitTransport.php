@@ -27,9 +27,16 @@ class SendKitTransport extends AbstractTransport
         $envelope = $message->getEnvelope();
 
         $headers = [];
-        $headersToBypass = ['from', 'to', 'cc', 'bcc', 'reply-to', 'sender', 'subject', 'content-type'];
+        $tags = [];
+        $headersToBypass = ['from', 'to', 'cc', 'bcc', 'reply-to', 'sender', 'subject', 'content-type', 'x-sendkit-scheduled-at'];
 
         foreach ($email->getHeaders()->all() as $name => $header) {
+            if ($header instanceof MetadataHeader) {
+                $tags[] = ['name' => $header->getKey(), 'value' => $header->getValue()];
+
+                continue;
+            }
+
             if (in_array($name, $headersToBypass, true)) {
                 continue;
             }
@@ -74,15 +81,25 @@ class SendKitTransport extends AbstractTransport
         }
 
         if ($email->getReplyTo()) {
-            $payload['reply_to'] = $this->stringifyAddresses($email->getReplyTo());
+            $payload['reply_to'] = $this->stringifyAddresses($email->getReplyTo())[0];
         }
 
         if ($headers !== []) {
             $payload['headers'] = $headers;
         }
 
+        if ($tags !== []) {
+            $payload['tags'] = $tags;
+        }
+
         if ($attachments !== []) {
             $payload['attachments'] = $attachments;
+        }
+
+        $scheduledAt = $email->getHeaders()->get('X-SendKit-Scheduled-At');
+
+        if ($scheduledAt) {
+            $payload['scheduled_at'] = $scheduledAt->getBodyAsString();
         }
 
         try {

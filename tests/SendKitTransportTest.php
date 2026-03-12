@@ -9,6 +9,7 @@ use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Facades\Mail;
 use SendKit\Client;
+use SendKit\Laravel\Transport\MetadataHeader;
 use SendKit\Laravel\Transport\SendKitTransport;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -128,7 +129,7 @@ it('sends an email with reply-to', function () {
     $transport->send($email);
 
     $body = json_decode($history[0]['request']->getBody()->getContents(), true);
-    expect($body['reply_to'])->toBe(['reply@example.com']);
+    expect($body['reply_to'])->toBe('reply@example.com');
 });
 
 it('sends an email with text body', function () {
@@ -201,3 +202,179 @@ it('casts transport to string as sendkit', function () {
 
     expect((string) $transport)->toBe('sendkit');
 });
+
+it('sends reply_to as a string not an array', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->replyTo(new Address('reply@example.com'), new Address('reply2@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['reply_to'])->toBeString();
+    expect($body['reply_to'])->toBe('reply@example.com');
+});
+
+it('sends an email with tags via MetadataHeader', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $email->getHeaders()->add(new MetadataHeader('campaign', 'welcome'));
+    $email->getHeaders()->add(new MetadataHeader('environment', 'production'));
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['tags'])->toHaveCount(2);
+    expect($body['tags'][0])->toBe(['name' => 'campaign', 'value' => 'welcome']);
+    expect($body['tags'][1])->toBe(['name' => 'environment', 'value' => 'production']);
+});
+
+it('does not include tags when none are set', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body)->not->toHaveKey('tags');
+});
+
+it('sends an email with scheduled_at via X-SendKit-Scheduled-At header', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $email->getHeaders()->addTextHeader('X-SendKit-Scheduled-At', '2026-12-25T10:00:00Z');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['scheduled_at'])->toBe('2026-12-25T10:00:00Z');
+    expect($body)->not->toHaveKey('headers');
+});
+
+it('sends an email with attachments', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>')
+        ->attach('file content here', 'document.txt', 'text/plain');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['attachments'])->toHaveCount(1);
+    expect($body['attachments'][0]['filename'])->toBe('document.txt');
+    expect($body['attachments'][0]['content_type'])->toBe('text/plain');
+    expect($body['attachments'][0]['content'])->toBeString();
+});
+
+it('forwards custom headers', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $email->getHeaders()->addTextHeader('X-Custom-Header', 'custom-value');
+    $email->getHeaders()->addTextHeader('X-Another-Header', 'another-value');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['headers'])->toHaveKey('X-Custom-Header');
+    expect($body['headers']['X-Custom-Header'])->toBe('custom-value');
+    expect($body['headers']['X-Another-Header'])->toBe('another-value');
+});
+
+it('sends an email with multiple to recipients', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(200, [], json_encode(['id' => 'sent-email-uuid'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient1@example.com'), new Address('recipient2@example.com'), new Address('recipient3@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+
+    $body = json_decode($history[0]['request']->getBody()->getContents(), true);
+    expect($body['to'])->toBe(['recipient1@example.com', 'recipient2@example.com', 'recipient3@example.com']);
+});
+
+it('throws a TransportException when the API returns an error', function () {
+    $history = [];
+    $client = createTestClient($history, [
+        new Response(422, [], json_encode(['message' => 'Validation failed'])),
+    ]);
+
+    $transport = new SendKitTransport($client);
+
+    $email = (new Email)
+        ->from(new Address('sender@example.com'))
+        ->to(new Address('recipient@example.com'))
+        ->subject('Test Subject')
+        ->html('<p>Hello</p>');
+
+    $transport->send($email);
+})->throws(\Symfony\Component\Mailer\Exception\TransportException::class);
