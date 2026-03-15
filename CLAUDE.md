@@ -10,9 +10,9 @@ Laravel integration for SendKit. Registers a `sendkit` mail transport and handle
 src/
 ├── SendKitServiceProvider.php          # Registers config, client singleton, mail transport, webhook route
 ├── Facades/
-│   └── SendKit.php                     # Facade for SendKit\Client
+│   └── SendKit.php                     # Facade for SendKit\Client (contacts, contactProperties, emails, emailValidations)
 ├── Transport/
-│   └── SendKitTransport.php            # Symfony AbstractTransport → calls sendMime()
+│   └── SendKitTransport.php            # Symfony AbstractTransport → calls emails()->send()
 ├── Http/
 │   ├── Controllers/
 │   │   └── WebhookController.php       # Maps webhook event types to Laravel events
@@ -33,7 +33,7 @@ src/
 
 ## Key Decisions
 
-- Transport uses `/v1/emails/mime` endpoint (Symfony Mailer provides full MIME message)
+- Transport uses `/emails` endpoint (structured params extracted from Symfony Mailer message)
 - Webhook route is auto-registered at `POST /webhook/sendkit` (configurable via `SENDKIT_WEBHOOK_PATH`)
 - Signature verification uses `hash_hmac('sha256', $jsonBody, $secret)` matching SendKit's `DispatchWebhook` job
 - Signature verification is skipped if `SENDKIT_WEBHOOK_SECRET` is not set
@@ -43,7 +43,7 @@ src/
 
 - PHP ^8.2
 - illuminate/support ^11.0|^12.0
-- sendkit/sendkit-php ^0.1
+- sendkit/sendkit-php ^1.0
 - symfony/mailer ^7.0
 - orchestra/testbench ^10.0 (dev)
 - pestphp/pest ^3.0 (dev)

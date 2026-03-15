@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Facade;
 use SendKit\Client;
 
 /**
+ * @method static \SendKit\Contacts contacts()
+ * @method static \SendKit\ContactProperties contactProperties()
  * @method static \SendKit\Emails emails()
  * @method static \SendKit\EmailValidations emailValidations()
  * @method static array validateEmail(string $email)

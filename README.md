@@ -1,6 +1,6 @@
 # SendKit for Laravel
 
-Official Laravel integration for [SendKit](https://sendkit.com). Adds a `sendkit` mail transport and webhook handling.
+Official Laravel integration for [SendKit](https://sendkit.dev). Adds a `sendkit` mail transport and webhook handling.
 
 ## Installation
 
@@ -44,6 +44,69 @@ $response = SendKit::emails()->send([
     'subject' => 'Hello',
     'html' => '<h1>Welcome!</h1>',
 ]);
+```
+
+### Contacts
+
+```php
+use SendKit\Laravel\Facades\SendKit;
+
+// Create or update a contact (upsert by email)
+$contact = SendKit::contacts()->create([
+    'email' => 'john@example.com',
+    'first_name' => 'John',
+    'last_name' => 'Doe',
+    'list_ids' => ['list-uuid-1'],
+    'properties' => ['COMPANY' => 'Acme'],
+]);
+
+// List contacts (paginated)
+$contacts = SendKit::contacts()->list();
+$contacts = SendKit::contacts()->list(['page' => 2]);
+
+// Get a single contact
+$contact = SendKit::contacts()->get('contact-uuid');
+
+// Update a contact
+$contact = SendKit::contacts()->update('contact-uuid', [
+    'first_name' => 'Johnny',
+]);
+
+// Delete a contact
+SendKit::contacts()->delete('contact-uuid');
+
+// Add a contact to lists
+SendKit::contacts()->addToLists('contact-uuid', ['list-uuid-1', 'list-uuid-2']);
+
+// List a contact's lists
+$lists = SendKit::contacts()->listLists('contact-uuid');
+
+// Remove a contact from a list
+SendKit::contacts()->removeFromList('contact-uuid', 'list-uuid');
+```
+
+### Contact Properties
+
+```php
+use SendKit\Laravel\Facades\SendKit;
+
+// Create a property ("string", "number", or "date")
+$property = SendKit::contactProperties()->create([
+    'key' => 'company',
+    'type' => 'string',
+    'fallback_value' => 'N/A',
+]);
+
+// List all properties
+$properties = SendKit::contactProperties()->list();
+
+// Update a property
+SendKit::contactProperties()->update('property-uuid', [
+    'key' => 'organization',
+]);
+
+// Delete a property
+SendKit::contactProperties()->delete('property-uuid');
 ```
 
 ### Validating an Email
