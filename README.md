@@ -164,3 +164,7 @@ Event::listen(EmailDelivered::class, function ($event) {
 - `EmailClicked` — `email.clicked`
 - `EmailFailed` — `email.failed`
 - `EmailDeliveryDelayed` — `email.delivery_delayed`
+- `EmailRejected` — `email.rejected`
+- `ContactCreated` — `contact.created`
+- `ContactUpdated` — `contact.updated`
+- `ContactDeleted` — `contact.deleted`

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Event;
+use SendKit\Laravel\Events\ContactCreated;
+use SendKit\Laravel\Events\ContactDeleted;
+use SendKit\Laravel\Events\ContactUpdated;
 use SendKit\Laravel\Events\EmailBounced;
 use SendKit\Laravel\Events\EmailClicked;
 use SendKit\Laravel\Events\EmailComplained;
@@ -10,6 +13,7 @@ use SendKit\Laravel\Events\EmailDelivered;
 use SendKit\Laravel\Events\EmailDeliveryDelayed;
 use SendKit\Laravel\Events\EmailFailed;
 use SendKit\Laravel\Events\EmailOpened;
+use SendKit\Laravel\Events\EmailRejected;
 use SendKit\Laravel\Events\EmailSent;
 
 function signPayload(array $payload, string $secret = 'test-webhook-secret'): string
@@ -147,6 +151,58 @@ it('dispatches EmailDeliveryDelayed event', function () {
     Event::assertDispatched(EmailDeliveryDelayed::class);
 });
 
+it('dispatches EmailRejected event', function () {
+    Event::fake();
+
+    $payload = ['type' => 'email.rejected', 'data' => ['email_id' => 'abc']];
+    $signature = signPayload($payload);
+
+    $this->postJson(route('sendkit.webhook'), $payload, [
+        'X-Webhook-Signature' => $signature,
+    ])->assertOk();
+
+    Event::assertDispatched(EmailRejected::class);
+});
+
+it('dispatches ContactCreated event', function () {
+    Event::fake();
+
+    $payload = ['type' => 'contact.created', 'data' => ['contact_id' => 'abc', 'email' => 'john@example.com']];
+    $signature = signPayload($payload);
+
+    $this->postJson(route('sendkit.webhook'), $payload, [
+        'X-Webhook-Signature' => $signature,
+    ])->assertOk();
+
+    Event::assertDispatched(ContactCreated::class, fn ($event) => $event->payload === ['contact_id' => 'abc', 'email' => 'john@example.com']);
+});
+
+it('dispatches ContactUpdated event', function () {
+    Event::fake();
+
+    $payload = ['type' => 'contact.updated', 'data' => ['contact_id' => 'abc', 'email' => 'john@example.com']];
+    $signature = signPayload($payload);
+
+    $this->postJson(route('sendkit.webhook'), $payload, [
+        'X-Webhook-Signature' => $signature,
+    ])->assertOk();
+
+    Event::assertDispatched(ContactUpdated::class);
+});
+
+it('dispatches ContactDeleted event', function () {
+    Event::fake();
+
+    $payload = ['type' => 'contact.deleted', 'data' => ['contact_id' => 'abc', 'email' => 'john@example.com']];
+    $signature = signPayload($payload);
+
+    $this->postJson(route('sendkit.webhook'), $payload, [
+        'X-Webhook-Signature' => $signature,
+    ])->assertOk();
+
+    Event::assertDispatched(ContactDeleted::class);
+});
+
 it('returns ok for unknown event types', function () {
     Event::fake();
 
@@ -165,6 +221,10 @@ it('returns ok for unknown event types', function () {
     Event::assertNotDispatched(EmailClicked::class);
     Event::assertNotDispatched(EmailFailed::class);
     Event::assertNotDispatched(EmailDeliveryDelayed::class);
+    Event::assertNotDispatched(EmailRejected::class);
+    Event::assertNotDispatched(ContactCreated::class);
+    Event::assertNotDispatched(ContactUpdated::class);
+    Event::assertNotDispatched(ContactDeleted::class);
 });
 
 it('skips signature verification when secret is not configured', function () {
