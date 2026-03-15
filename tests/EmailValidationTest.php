@@ -35,14 +35,14 @@ it('validates an email via the facade', function () {
     $client = createValidationClient($history, [
         new Response(200, [], json_encode([
             'email' => 'user@example.com',
-            'is_valid' => true,
+            'is_valid' => 'HIGH',
             'evaluations' => [
-                'has_valid_syntax' => true,
-                'has_valid_dns' => true,
-                'mailbox_exists' => true,
-                'is_role_address' => false,
-                'is_disposable' => false,
-                'is_random_input' => false,
+                'has_valid_syntax' => 'YES',
+                'has_valid_dns' => 'YES',
+                'mailbox_exists' => 'YES',
+                'is_role_address' => 'NO',
+                'is_disposable' => 'NO',
+                'is_random_input' => 'NO',
             ],
             'should_block' => false,
             'block_reason' => null,
@@ -55,8 +55,8 @@ it('validates an email via the facade', function () {
     $result = SendKit::validateEmail('user@example.com');
 
     expect($result['email'])->toBe('user@example.com');
-    expect($result['is_valid'])->toBeTrue();
-    expect($result['evaluations']['has_valid_syntax'])->toBeTrue();
+    expect($result['is_valid'])->toBe('HIGH');
+    expect($result['evaluations']['has_valid_syntax'])->toBe('YES');
     expect($result['should_block'])->toBeFalse();
     expect($history)->toHaveCount(1);
 
@@ -70,14 +70,14 @@ it('validates an email via the facade emailValidations method', function () {
     $client = createValidationClient($history, [
         new Response(200, [], json_encode([
             'email' => 'test@example.com',
-            'is_valid' => false,
+            'is_valid' => 'LOW',
             'evaluations' => [
-                'has_valid_syntax' => true,
-                'has_valid_dns' => false,
-                'mailbox_exists' => false,
-                'is_role_address' => false,
-                'is_disposable' => true,
-                'is_random_input' => false,
+                'has_valid_syntax' => 'YES',
+                'has_valid_dns' => 'NO',
+                'mailbox_exists' => 'NO',
+                'is_role_address' => 'NO',
+                'is_disposable' => 'YES',
+                'is_random_input' => 'NO',
             ],
             'should_block' => true,
             'block_reason' => 'disposable',
@@ -89,8 +89,8 @@ it('validates an email via the facade emailValidations method', function () {
 
     $result = SendKit::emailValidations()->validate('test@example.com');
 
-    expect($result['is_valid'])->toBeFalse();
-    expect($result['evaluations']['is_disposable'])->toBeTrue();
+    expect($result['is_valid'])->toBe('LOW');
+    expect($result['evaluations']['is_disposable'])->toBe('YES');
     expect($result['should_block'])->toBeTrue();
     expect($result['block_reason'])->toBe('disposable');
 });

@@ -26,7 +26,11 @@ src/
 │   ├── EmailOpened.php
 │   ├── EmailClicked.php
 │   ├── EmailFailed.php
-│   └── EmailDeliveryDelayed.php
+│   ├── EmailDeliveryDelayed.php
+│   ├── EmailRejected.php
+│   ├── ContactCreated.php
+│   ├── ContactUpdated.php
+│   └── ContactDeleted.php
 └── Exceptions/
     └── ApiKeyIsMissing.php
 ```
